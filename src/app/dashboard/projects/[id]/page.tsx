@@ -118,35 +118,61 @@ export default async function ProjectPage({
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Filename</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">AI Description</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Duration</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Frames</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {clips.map((clip) => (
-                <tr key={clip.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">
-                    {clip.filename}
+                <tr key={clip.id} className="hover:bg-gray-50 transition-colors align-top">
+                  <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px]">
+                    <span className="block truncate" title={clip.filename}>{clip.filename}</span>
+                    {clip.frames_extracted > 0 && (
+                      <span className="text-xs text-gray-400">{clip.frames_extracted} frames</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className="px-4 py-3 max-w-sm">
+                    {clip.description ? (
+                      <>
+                        <p className="text-gray-700 line-clamp-2 text-xs">{clip.description}</p>
+                        {clip.tags && clip.tags.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {clip.tags.slice(0, 8).map((tag: string) => (
+                              <span
+                                key={tag}
+                                className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {clip.tags.length > 8 && (
+                              <span className="text-xs text-gray-400">+{clip.tags.length - 8} more</span>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-xs">
+                        {clip.status === 'ready' ? 'No description' : '—'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                     {formatDuration(clip.duration_seconds)}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {clip.frames_extracted > 0 ? clip.frames_extracted : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[clip.status]}`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[clip.status as Clip['status']]}`}
                     >
-                      {STATUS_LABELS[clip.status]}
+                      {STATUS_LABELS[clip.status as Clip['status']]}
                     </span>
                     {clip.status === 'error' && clip.error_message && (
-                      <p className="mt-0.5 text-xs text-red-500">{clip.error_message}</p>
+                      <p className="mt-0.5 text-xs text-red-500 max-w-[200px]">{clip.error_message}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-400">
+                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                     {new Date(clip.created_at).toLocaleDateString()}
                   </td>
                 </tr>

@@ -20,6 +20,10 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1)
 }
 
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.warn('[worker] ANTHROPIC_API_KEY is not set — Claude vision tagging will fail')
+}
+
 // ── Supabase client ───────────────────────────────────────────────────────────
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {

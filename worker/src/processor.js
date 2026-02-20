@@ -1,21 +1,18 @@
 /**
  * ScriptSync worker — Video processing logic
- * 
- * Responsibilities (Task 2):
- *   - Download video from Supabase Storage
- *   - Extract frames at 1 frame per 2 seconds
- *   - Extract single thumbnail
- *   - Upload frames and thumbnail to storage
- *   - Update clip record with duration and frame count
+ *
+ * Responsibilities:
+ *   Task 2: Download video → FFmpeg frame extraction → upload frames/thumbnail
+ *   Task 3: Claude vision tagging → store description + tags → mark ready
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { createReadStream, createWriteStream, existsSync, mkdirSync, rmSync, unlinkSync, readFileSync } from 'fs'
-import { pipeline } from 'stream/promises'
+import { createWriteStream, existsSync, mkdirSync, rmSync, readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { promisify } from 'util'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
+import { tagClip } from './tagger.js'
 
 const execAsync = promisify(exec)
 
@@ -256,7 +253,25 @@ export async function processClip(clip) {
     await uploadFile('frames', thumbnailStoragePath, thumbnailPath, 'image/jpeg')
     console.log(`[worker] Thumbnail uploaded`)
 
-    // 8. Update clip record
+    // 8. Tag clip with Claude vision (frames still on disk for efficiency)
+    console.log(`[worker] Running Claude vision tagging...`)
+    let description = null
+    let tags = []
+
+    try {
+      const taggingResult = await tagClip(framesDir, frameCount)
+      description = taggingResult.description
+      tags = taggingResult.tags
+    } catch (taggingErr) {
+      // Tagging failure is non-fatal for frame extraction; we surface it in
+      // the error_message field but still mark the clip ready with no description.
+      // This way users can at least browse and re-trigger tagging in a future feature.
+      console.error(`[worker] Tagging failed for clip ${clip.id}:`, taggingErr.message)
+      // We will propagate this as a clip error so the user is informed
+      throw taggingErr
+    }
+
+    // 9. Update clip record with frames, thumbnail, AI description and tags
     console.log(`[worker] Updating clip record...`)
     const { error: updateError } = await supabase
       .from('clips')
@@ -265,6 +280,8 @@ export async function processClip(clip) {
         duration_seconds: duration,
         frames_extracted: frameCount,
         thumbnail_path: thumbnailStoragePath,
+        description,
+        tags,
         updated_at: new Date().toISOString(),
       })
       .eq('id', clip.id)
@@ -273,7 +290,7 @@ export async function processClip(clip) {
       throw new Error(`Failed to update clip: ${updateError.message}`)
     }
 
-    // 9. Update user's total video seconds
+    // 10. Update user's total video seconds
     await addVideoSeconds(clip.user_id, duration)
 
     console.log(`[worker] Clip ${clip.id} processed successfully`)
