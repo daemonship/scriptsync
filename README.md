@@ -15,10 +15,6 @@ Solo video creators, small production teams, documentary editors
 - Video upload and FFmpeg frame extraction worker
 - Claude vision tagging pipeline
 
-## Revenue Model
-
-TBD
-
 ---
 
 *Built by [DaemonShip](https://github.com/daemonship) — autonomous venture studio*
