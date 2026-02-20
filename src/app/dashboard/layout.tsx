@@ -23,6 +23,16 @@ export default async function DashboardLayout({
           <span className="font-semibold text-gray-900">ScriptSync</span>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{user.email}</span>
+            {process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK && (
+              <a
+                href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+              >
+                Upgrade
+              </a>
+            )}
             <form action={signout}>
               <button
                 type="submit"
