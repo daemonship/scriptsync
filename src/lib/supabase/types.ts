@@ -1,5 +1,7 @@
 export type ClipStatus = 'uploading' | 'processing' | 'ready' | 'error'
 
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
 export interface Database {
   public: {
     Tables: {
@@ -85,13 +87,19 @@ export interface Database {
           updated_at?: string
         }
         Update: {
-          status?: ClipStatus
+          id?: string
+          project_id?: string
+          user_id?: string
+          filename?: string
+          storage_path?: string
           thumbnail_path?: string | null
           duration_seconds?: number | null
+          status?: ClipStatus
           description?: string | null
           tags?: string[]
           frames_extracted?: number
           error_message?: string | null
+          created_at?: string
           updated_at?: string
         }
       }
@@ -102,7 +110,7 @@ export interface Database {
           user_id: string
           content: string
           position: number
-          embedding: number[] | null
+          embedding: Json | null
           created_at: string
         }
         Insert: {
@@ -111,13 +119,17 @@ export interface Database {
           user_id: string
           content: string
           position: number
-          embedding?: number[] | null
+          embedding?: Json | null
           created_at?: string
         }
         Update: {
+          id?: string
+          project_id?: string
+          user_id?: string
           content?: string
           position?: number
-          embedding?: number[] | null
+          embedding?: Json | null
+          created_at?: string
         }
       }
       matches: {
@@ -138,9 +150,23 @@ export interface Database {
           created_at?: string
         }
         Update: {
+          id?: string
+          segment_id?: string
+          clip_id?: string
           similarity_score?: number
           rank?: number
+          created_at?: string
         }
+      }
+    }
+    Views: {}
+    Functions: {
+      add_video_seconds: {
+        Args: {
+          p_user_id: string
+          p_seconds: number
+        }
+        Returns: undefined
       }
     }
   }

@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# FFmpeg will be installed in Task 2 — skeleton only
-# RUN apk add --no-cache ffmpeg
+# Install FFmpeg for video frame extraction
+RUN apk add --no-cache ffmpeg
 
 WORKDIR /app
 

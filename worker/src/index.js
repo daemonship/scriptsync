@@ -1,14 +1,13 @@
 /**
  * ScriptSync worker — Fly.io Node.js service
  *
- * Responsibilities (implemented in subsequent tasks):
- *   Task 2: Download video → FFmpeg frame extraction → upload frames
+ * Responsibilities:
+ *   Task 2: Video upload → FFmpeg frame extraction
  *   Task 3: Claude vision tagging pipeline
- *
- * This skeleton establishes the Supabase connection and polling loop.
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { processClip } from './processor.js'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -27,21 +26,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 })
 
-// ── Job handlers (stubs — implemented in Task 2 & 3) ─────────────────────────
-
-async function processClip(clip) {
-  console.log(`[worker] Processing clip: ${clip.id} (${clip.filename})`)
-  // TODO (Task 2): Download file from Supabase Storage → FFmpeg frame extraction
-  // TODO (Task 3): Claude vision tagging
-  throw new Error('Not implemented — see Task 2 and Task 3')
-}
-
 // ── Poll loop ─────────────────────────────────────────────────────────────────
 
 async function poll() {
   const { data: clips, error } = await supabase
     .from('clips')
-    .select('*')
+    .select('id, user_id, project_id, filename, storage_path')
     .eq('status', 'processing')
     .order('created_at', { ascending: true })
     .limit(5)
@@ -62,11 +52,7 @@ async function poll() {
       await processClip(clip)
     } catch (err) {
       console.error(`[worker] Failed to process clip ${clip.id}:`, err.message)
-
-      await supabase
-        .from('clips')
-        .update({ status: 'error', error_message: err.message, updated_at: new Date().toISOString() })
-        .eq('id', clip.id)
+      // Error already handled in processClip - clip status updated to 'error'
     }
   }
 }
