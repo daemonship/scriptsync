@@ -17,8 +17,8 @@ Video editors waste hours scrubbing through footage to match spoken words with B
 | Project scaffold & auth | ✅ Complete | Next.js 14 App Router, Supabase Auth, Fly.io worker skeleton |
 | Video upload & frame extraction | ✅ Complete | MP4/MOV up to 2 GB, FFmpeg 1fps/2s, 5-hour usage cap |
 | Claude vision tagging pipeline | ✅ Complete | claude-sonnet-4-6 vision, description + keyword tags, retry logic |
-| Clip browser, search & script paste UI | 🚧 In Progress | Current task |
-| B-roll matching & CSV export | 📋 Planned | |
+| Clip browser, search & script paste UI | ✅ Complete | Thumbnail grid, keyword search, script paste, match view, CSV export |
+| B-roll matching & CSV export | ✅ Complete | OpenAI embeddings, cosine similarity, CSV export API |
 | Deploy to production | 📋 Planned | |
 
 ## What It Does
@@ -74,7 +74,7 @@ Open the Supabase SQL editor and run `supabase/migrations/001_initial_schema.sql
 
 Create two storage buckets in your Supabase project:
 - `clips` — stores raw uploaded video files (private)
-- `frames` — stores extracted frames (private)
+- `frames` — stores extracted frames and thumbnails (public, for thumbnail display)
 
 ### 4. Run the dev server
 

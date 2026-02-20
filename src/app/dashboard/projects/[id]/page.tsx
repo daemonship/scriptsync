@@ -2,29 +2,23 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { UploadClip } from '@/components/upload-clip'
+import { ClipGrid } from '@/components/clip-grid'
+import { ScriptPaste } from '@/components/script-paste'
+import { MatchView } from '@/components/match-view'
+import { CsvExport } from '@/components/csv-export'
 import type { Database } from '@/lib/supabase/types'
 
 type Clip = Database['public']['Tables']['clips']['Row']
+type ScriptSegment = Database['public']['Tables']['script_segments']['Row']
+type Match = Database['public']['Tables']['matches']['Row']
 
-const STATUS_LABELS: Record<Clip['status'], string> = {
-  uploading: 'Uploading…',
-  processing: 'Processing…',
-  ready: 'Ready',
-  error: 'Error',
+interface MatchWithClip extends Match {
+  clips: Clip
 }
 
-const STATUS_COLORS: Record<Clip['status'], string> = {
-  uploading: 'text-blue-600 bg-blue-50',
-  processing: 'text-yellow-700 bg-yellow-50',
-  ready: 'text-green-700 bg-green-50',
-  error: 'text-red-700 bg-red-50',
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return '—'
-  const m = Math.floor(seconds / 60)
-  const s = Math.round(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
+interface SegmentWithMatches {
+  segment: ScriptSegment
+  matches: MatchWithClip[]
 }
 
 function formatUsage(seconds: number): string {
@@ -51,7 +45,13 @@ export default async function ProjectPage({
 
   if (!user) notFound()
 
-  const [{ data: project }, { data: clips }, { data: profile }] = await Promise.all([
+  // Fetch project, clips, profile, and script segments with matches
+  const [
+    { data: project },
+    { data: clips },
+    { data: profile },
+    { data: segments },
+  ] = await Promise.all([
     supabase
       .from('projects')
       .select('*')
@@ -64,12 +64,46 @@ export default async function ProjectPage({
       .eq('project_id', id)
       .order('created_at', { ascending: false }),
     supabase.from('profiles').select('total_video_seconds').eq('id', user.id).single(),
+    supabase
+      .from('script_segments')
+      .select('*')
+      .eq('project_id', id)
+      .eq('user_id', user.id)
+      .order('position', { ascending: true }),
   ])
 
   if (!project) notFound()
 
+  // Fetch matches for all segments
+  let segmentsWithMatches: SegmentWithMatches[] = []
+  if (segments && segments.length > 0) {
+    const segmentIds = segments.map((s) => s.id)
+    const { data: matches } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        clips(*)
+      `)
+      .in('segment_id', segmentIds)
+      .order('rank', { ascending: true })
+
+    // Group matches by segment
+    const matchesBySegment = new Map<string, MatchWithClip[]>()
+    for (const match of matches || []) {
+      const existing = matchesBySegment.get(match.segment_id) || []
+      existing.push(match as MatchWithClip)
+      matchesBySegment.set(match.segment_id, existing)
+    }
+
+    segmentsWithMatches = segments.map((segment) => ({
+      segment,
+      matches: matchesBySegment.get(segment.id) || [],
+    }))
+  }
+
   const totalSeconds = profile?.total_video_seconds ?? 0
   const atCap = totalSeconds >= 5 * 3600
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
   return (
     <div>
@@ -94,93 +128,48 @@ export default async function ProjectPage({
           </p>
         </div>
 
-        {!atCap && (
-          <UploadClip projectId={id} />
-        )}
-        {atCap && (
-          <p className="text-sm text-red-600 font-medium">
-            5-hour cap reached — upgrade to upload more
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          <CsvExport projectId={id} projectName={project.name} />
+          {!atCap ? (
+            <UploadClip projectId={id} />
+          ) : (
+            <p className="text-sm text-red-600 font-medium">
+              5-hour cap reached
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Clips list */}
-      {!clips || clips.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-gray-200 p-12 text-center">
-          <p className="text-sm text-gray-500">No clips yet.</p>
-          <p className="mt-1 text-sm text-gray-400">
-            Upload a video file to get started.
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Filename</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">AI Description</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Duration</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Added</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {clips.map((clip) => (
-                <tr key={clip.id} className="hover:bg-gray-50 transition-colors align-top">
-                  <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px]">
-                    <span className="block truncate" title={clip.filename}>{clip.filename}</span>
-                    {clip.frames_extracted > 0 && (
-                      <span className="text-xs text-gray-400">{clip.frames_extracted} frames</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 max-w-sm">
-                    {clip.description ? (
-                      <>
-                        <p className="text-gray-700 line-clamp-2 text-xs">{clip.description}</p>
-                        {clip.tags && clip.tags.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {clip.tags.slice(0, 8).map((tag: string) => (
-                              <span
-                                key={tag}
-                                className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                            {clip.tags.length > 8 && (
-                              <span className="text-xs text-gray-400">+{clip.tags.length - 8} more</span>
-                            )}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-gray-400 text-xs">
-                        {clip.status === 'ready' ? 'No description' : '—'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {formatDuration(clip.duration_seconds)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[clip.status as Clip['status']]}`}
-                    >
-                      {STATUS_LABELS[clip.status as Clip['status']]}
-                    </span>
-                    {clip.status === 'error' && clip.error_message && (
-                      <p className="mt-0.5 text-xs text-red-500 max-w-[200px]">{clip.error_message}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
-                    {new Date(clip.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Main content tabs */}
+      <div className="space-y-8">
+        {/* Clips Section */}
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Clips</h2>
+          <ClipGrid clips={clips || []} supabaseUrl={supabaseUrl} />
+        </section>
+
+        {/* Script & Matches Section */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Script Paste */}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Script</h2>
+            <ScriptPaste
+              projectId={id}
+              existingSegments={segments?.map((s) => ({
+                id: s.id,
+                content: s.content,
+                position: s.position,
+              }))}
+            />
+          </div>
+
+          {/* Match View */}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">B-Roll Matches</h2>
+            <MatchView segments={segmentsWithMatches} supabaseUrl={supabaseUrl} />
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

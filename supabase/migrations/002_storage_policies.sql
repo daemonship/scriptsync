@@ -18,10 +18,10 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
--- Create 'frames' bucket for extracted frames and thumbnails (private)
+-- Create 'frames' bucket for extracted frames and thumbnails (public for thumbnails)
 insert into storage.buckets (id, name, public)
-values ('frames', 'frames', false)
-on conflict (id) do nothing;
+values ('frames', 'frames', true)
+on conflict (id) do update set public = true;
 
 -- ============================================================
 -- STORAGE POLICIES — clips bucket
@@ -55,13 +55,10 @@ create policy "clips: users can delete own files"
 -- STORAGE POLICIES — frames bucket
 -- ============================================================
 
--- Users can read their own frames/thumbnails
-create policy "frames: users can read own frames"
+-- Anyone can read frames (public bucket for thumbnails)
+create policy "frames: public read access"
   on storage.objects for select
-  using (
-    bucket_id = 'frames'
-    and auth.uid()::text = (storage.foldername(name))[1]
-  );
+  using (bucket_id = 'frames');
 
 -- Note: frames are written by the worker using service role key,
 -- which bypasses RLS. No insert policy needed for regular users.
