@@ -15,9 +15,9 @@ Video editors waste hours scrubbing through footage to match spoken words with B
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Project scaffold & auth | ✅ Complete | Next.js 14 App Router, Supabase Auth, Fly.io worker skeleton |
-| Video upload & frame extraction | 🚧 In Progress | |
-| Claude vision tagging pipeline | 📋 Planned | |
-| Clip browser, search & script paste UI | 📋 Planned | |
+| Video upload & frame extraction | ✅ Complete | MP4/MOV up to 2 GB, FFmpeg 1fps/2s, 5-hour usage cap |
+| Claude vision tagging pipeline | ✅ Complete | claude-sonnet-4-6 vision, description + keyword tags, retry logic |
+| Clip browser, search & script paste UI | 🚧 In Progress | Current task |
 | B-roll matching & CSV export | 📋 Planned | |
 | Deploy to production | 📋 Planned | |
 
