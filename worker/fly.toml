@@ -1,0 +1,16 @@
+app = "scriptsync-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  POLL_INTERVAL_MS = "5000"
+
+# No HTTP service — this is a background worker.
+# It polls Supabase for jobs; no inbound traffic needed.
+
+[[vm]]
+  memory = "4gb"
+  cpu_kind = "shared"
+  cpus = 2
