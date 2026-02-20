@@ -19,7 +19,10 @@ Video editors waste hours scrubbing through footage to match spoken words with B
 | Claude vision tagging pipeline | ✅ Complete | claude-sonnet-4-6 vision, description + keyword tags, retry logic |
 | Clip browser, search & script paste UI | ✅ Complete | Thumbnail grid, keyword search, script paste, match view, CSV export |
 | B-roll matching & CSV export | ✅ Complete | OpenAI embeddings, cosine similarity, CSV export API |
-| Deploy to production | 📋 Planned | |
+| Stripe payment link | ✅ Complete | "Upgrade" link in dashboard nav, driven by env var |
+| Deploy to Vercel | ✅ Complete | Live at https://scriptsync-ten.vercel.app |
+| Deploy worker to Fly.io | 🚧 In Progress | `fly.toml` ready; needs Fly.io auth + Supabase secrets |
+| Production Supabase config | 🚧 In Progress | Migrations written; needs production project + env vars |
 
 ## What It Does
 
@@ -92,6 +95,12 @@ cp .env.example .env
 # Fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY
 node src/index.js
 ```
+
+## Production Deployment
+
+The Next.js app is deployed to Vercel at **https://scriptsync-ten.vercel.app**.
+
+For the full deployment guide (Supabase setup, Fly.io worker, Stripe, env vars), see [DEPLOY.md](./DEPLOY.md).
 
 ---
 
